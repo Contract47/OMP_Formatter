@@ -1,0 +1,25 @@
+/* CSS file placeholder. */
+
+table{ 
+	border-style: solid;
+}
+
+td{
+	vertical-align: top
+}
+
+.gridDataTab{
+  border-collapse: collapse;
+}
+
+.gridDataTab td{
+  border: solid grey 1px;
+}
+
+.lineCol{
+  background-color: grey;
+}
+
+.searchResult{
+  background-color: yellow;
+}

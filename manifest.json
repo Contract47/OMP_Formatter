@@ -1,0 +1,22 @@
+{
+  "manifest_version": 2,
+  "name": "OMPS_Formatter",
+  "short_name": "OMPS_Formatter",
+  "description": "",
+  "version": "0.0.1",
+  "minimum_chrome_version": "38",
+  "devtools_page": "devtools.html",
+  "background": { "scripts": ["background.js"] },
+  "content_scripts":[{
+    "js": ["content.js"], 
+	  "matches": ["<all_urls>"]
+  }],
+  "permissions": [
+    "contextMenus",
+    "activeTab",
+    "tabs",
+    "https://ajax.googleapis.com/",
+    "http://*/*", 
+    "https://*/*"
+  ]
+}

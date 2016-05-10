@@ -1,70 +1,114 @@
+// Connect to messaging system / background
+var port = chrome.extension.connect({ name: "panel" });
+
+port.onMessage.addListener(function (msg) {
+
+  if(msg.clear){
+	clear();
+
+  // Handle search requests on UI
+  }else if(msg.searchAction){
+
+	document.body.innerHTML =   document.body.innerHTML.replace(/<span class="searchResult"*>([^<]*)<\/span>/g,'$1');             // reset old marks
+
+	if(msg.searchAction !== 'cancelSearch'){
+	  var msg_search_regex = msg.searchString.replace(/[^\d\w]/g,"."); //replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
+
+	  var regExp = new RegExp(msg_search_regex,'g');
+
+	  document.body.innerHTML = document.body.innerHTML.replace(regExp,'<span class="searchResult">'+msg.searchString+'</span>'); // set new marks
+
+	  document.getElementsByClassName("searchResult")[0].scrollIntoView();
+	}
+
+  // View XML was sent from somewhere else
+  }else if(msg.respXML){
+	handleResponseXML(msg.respXML);
+
+	if(msg.reqXML){ 
+		handleRequestXML(msg.reqXML);
+	}
+
+  // Show right-clicked item data
+  }else if(msg.element){
+	$('#showAllButton').show();
+	debugger;
+	currentObjID      = msg.id;
+	currentObj        = $(msg.element);
+	currentObjStyle	  = currentObj[0].style;
+	currentStyleAttrs = Object.keys(currentObjStyle);
+
+	$("#objects").html('');
+	addObject($("#objects"), currentObjID, contentObj[currentObjID], prevContentObj[currentObjID] || {} );
+
+	if(_mode == 'request'){
+	  toggleView();
+	}
+  }
+});
 
 var currentObjID;
 var currentStyleAttrs = [];
 var contentObj      = {};
 var prevContentObj  = {};
 
-// ===============================================================================
-// Receive Object IDs from content script on right click
-// ===============================================================================
-//Created a port with background page for continous message communication
-var port = chrome.extension.connect({
-    name: "devtools"
-});
+function showNewRequest(){
+	$('#newRequestData').toggle();
+	$('#sendRequestButton').toggle();
+}
 
-port.onMessage.addListener(function (msg) {
-  
-  if(msg.clear){
-    clear();
-  
-  // Handle search requests on UI
-  }else if(msg.searchAction){
-    
-    document.body.innerHTML =   document.body.innerHTML.replace(/<span class="searchResult"*>([^<]*)<\/span>/g,'$1');             // reset old marks
-    
-    if(msg.searchAction !== 'cancelSearch'){
-      var msg_search_regex = msg.searchString.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
-      
-      var regExp = new RegExp(msg_search_regex,'g');
-      
-      document.body.innerHTML = document.body.innerHTML.replace(regExp,'<span class="searchResult">'+msg.searchString+'</span>'); // set new marks
-      
-      document.getElementsByClassName("searchResult")[0].scrollIntoView();
-    }
-  
-  // Show right-clicked item data
-  }else{
-    $('#showAllButton').show();
-    currentObjID      = msg.id;
-    currentObj        = $(msg.element);
-  	currentObjStyle	  = currentObj[0].style;
-  	currentStyleAttrs = Object.keys(currentObjStyle);
-  		
-    $("#objects").html('');
-    addObject($("#objects"), currentObjID, contentObj[currentObjID], prevContentObj[currentObjID] || {} );
-    
-    if(_mode == 'request'){
-      toggleView();
-    }
-  }
-});
+function sendRequest(){
+	port.postMessage({ sendRequest: $('#newRequestData').val() });
+}
 
-// ===============================================================================
+function sendFingertip(){
+	port.postMessage({ sendFingertip: true });
+}
 
 var _mode = "response";
 
 function toggleView(){
   _mode = (_mode == 'response')? 'request' : 'response';
   
-  $('#objectContent').toggle();
-  $('#requestContent').toggle();
-  
-  document.body.style["background-color"] = (_mode == 'response')? "lightgreen" : "lightblue";
+  $('#objectContent').animate({'width': 'toggle', opacity:'toggle', duration:1000});
+  $('#requestContent').animate({'width': 'toggle', opacity:'toggle', duration:1000});
+
+  if(_mode == 'response'){
+	$(document.body).css('background-position','100%');
+  }else{
+	$(document.body).css('background-position','0%');
+  }
+	
   $('#title').html((_mode == 'response')? 'Received Responses / Displayed Objects' : 'Sent Requests' );
+  $('#title').css({
+  	color: (_mode == 'response')? '#50AFB9' : '#8E528E',  	
+	"background-color": (_mode == 'response')? 'rgba(94, 210, 236, 0.35)' : 'rgba(210, 94, 236, 0.35)'
+  });
+  $('.gridMeta').css({
+  	"background-color": (_mode == 'response')? '#068A98' : '8A0698'
+  })
+
+  $('button').css({
+  	"background-image": (_mode == 'response')? 
+  							'linear-gradient(to bottom, rgba(106, 241, 255, 0.45), rgba(75, 199, 148, 0.58))' :
+  							'linear-gradient(to bottom, rgba(241, 106, 255, 0.45), rgba(199, 75, 148, 0.58))'
+  })
   $('#viewToggleButton').html('Show '+((_mode == 'response')? 'Requests' : 'Responses'));
 }
 
 $(document).ready(function(){
+  
+  $('#newRequestButton').click(showNewRequest);
+  $('#sendRequestButton').click(sendRequest);
+  $('#fingertipButton').click(sendFingertip);
+  $('#showReqXMLButton').click(function(){
+  	$('#requests').toggle();
+  	$('#requestXML').toggle();
+  });
+  $('#showObjXMLButton').click(function(){
+  	$('#objects').toggle();
+  	$('#objectXML').toggle();
+  });
   
   $('#showAllButton').click(function(){
     currentObjID = currentObj = currentObjStyle = undefined;
@@ -75,11 +119,13 @@ $(document).ready(function(){
     $('#showAllButton').hide();
   });
   
-  document.body.style["background-color"] = "lightgreen";
-  
-  $('#requestContent').hide();
+  $('#requestContent').animate({'width': 'toggle', duration:0});
   
   $('#viewToggleButton').click(toggleView);
+
+  $('#clearRequests').click(function(){
+    $('#requests').html('');
+  });
 });
 
 
@@ -111,7 +157,13 @@ $(document).ready(function(){
               }
             }
             
-            output += '<tr><td>Content</td><td>'+$param.html().replace('<!--[CDATA[','').replace(']]-->','')+'</td></tr>';
+            var content = $param.html().replace('<!--[CDATA[','').replace(']]-->','');
+            
+            if(content.match(/[0-9]+:.*#/g)){
+              content = gridDataToTab(content, null, content.split(':')[0]);
+            }
+            
+            output += '<tr><td>Content</td><td>'+content+'</td></tr>';
           
           output += '</table></td></tr>';
       }
@@ -122,7 +174,10 @@ $(document).ready(function(){
     return output;
   }
   
-  function setRequest(requestStr){
+  function handleRequestXML(requestStr){
+  	$('#requestXML').text(requestStr);
+    
+    $('#newRequestData').val(requestStr);
     
     $request = $(requestStr);
     
@@ -133,65 +188,68 @@ $(document).ready(function(){
     $('#requests').prepend('<tr><td>'+output+'</td></tr>');
   }
   
+  function handleResponseXML(content){
+  	$('#objectXML').text(content);
+  	
+	var xmlDoc	= $.parseXML( content );
+		$xml		= $( xmlDoc );
+	
+		// ================================================
+	// Clear content when mask changes
+		// ================================================
+		if($xml.find("I[MI][SI]")[0]){
+		  clear();
+		}
+
+		prevContentObj = jQuery.extend(true, {}, contentObj);
+
+		// ================================================
+	// Message boxes
+		// ================================================
+		//        elem,   parent,     objTag, objIdAttr,typeAttr, childTags,childIdAttr,  properties
+		addContent($xml,  contentObj, "MB",   "I",      null,     "Data",   null,         ["MBT","C","B","DR","I"]);
+
+		// ================================================
+		// DataGrid
+		// ================================================
+		//addContent2($xml, contentObj, "DSU", "TI", "TI",[{tag:"Data"},{tag:"Column",id:"Name",title:"Columns", value:"DataType"}]);
+		addContent($xml, contentObj, "DSU", "TI", "TI", "Data");
+
+		// ================================================
+		// Controls
+		// ================================================
+		addContent($xml, contentObj, "CU", "TI", "CT", "PU", "PN");
+
+		// ================================================
+		// Languages
+		// ================================================
+		addContent($xml, contentObj, "AL", "Languages$$", null, "IETF", "EN");
+				
+		// Clear currently shown content
+		$("#objects").html('');
+
+		if(currentObjID){
+			// ================================================
+			// Show single object
+			// ================================================
+			addObject($("#objects"), currentObjID, contentObj[currentObjID], prevContentObj[currentObjID] || {} );
+		}else{
+			// ================================================
+			// Show all objects
+			// ================================================
+			buildTable($('#objects'),contentObj, prevContentObj );
+		}
+  }
+  
   chrome.devtools.network.onRequestFinished.addListener(
+  
       function(request) {
         
         if(request.request.url.indexOf('mpp?') !== -1){
+		  
+          handleRequestXML(request.request.postData.text);
           
-          setRequest(request.request.postData.text);
-          
-          request.getContent(function(content){
-            
-            var xmlDoc	= $.parseXML( content );
-        		$xml		= $( xmlDoc );
-        		
-        		// ================================================
-            // Clear content when mask changes
-        		// ================================================
-        		if($xml.find("I[MI][SI]")[0]){
-        		  clear();
-        		}
-        		
-        		prevContentObj = jQuery.extend(true, {}, contentObj);
-        		
-        		// ================================================
-            // Message boxes
-        		// ================================================
-        		//        elem,   parent,     objTag, objIdAttr,typeAttr, childTags,childIdAttr,  properties
-        		addContent($xml,  contentObj, "MB",   "I",      null,     "Data",   null,         ["MBT","C","B","DR","I"]);
-        		
-        		// ================================================
-        		// DataGrid
-        		// ================================================
-        		//addContent2($xml, contentObj, "DSU", "TI", "TI",[{tag:"Data"},{tag:"Column",id:"Name",title:"Columns", value:"DataType"}]);
-        		addContent($xml, contentObj, "DSU", "TI", "TI", "Data");
-          
-        		// ================================================
-            // Controls
-        		// ================================================
-        		addContent($xml, contentObj, "CU", "TI", "CT", "PU", "PN");
-        		
-        		// ================================================
-            // Languages
-        		// ================================================
-        		addContent($xml, contentObj, "AL", "Languages$$", null, "IETF", "EN");
-        		
-        		// Clear currently shown content
-            $("#objects").html('');
-            
-        		if(currentObjID){
-          		// ================================================
-              // Show single object
-          		// ================================================
-              addObject($("#objects"), currentObjID, contentObj[currentObjID], prevContentObj[currentObjID] || {} );
-        		}else{
-          		// ================================================
-              // Show all objects
-          		// ================================================
-          		buildTable($('#objects'),contentObj, prevContentObj );
-        		}
-        		
-          });
+          request.getContent(function(content){ handleResponseXML(content); });
         }
       }
   );
@@ -272,6 +330,109 @@ function addContent2(elem, parent, objTag, objIdAttr,typeAttr,children, properti
   	});
 }
 
+function gridDataToTab(data, columns, columnCount){
+    
+    var columnList = [];
+
+    columnCount = (columns)? columns.length : columnCount;
+	
+    /*for(var i=99;i>=0;i--){
+        data = data.replace(new RegExp(i+"#","g"),"§§#"+i+": ");
+    }*/
+
+    var data = data.split('#');
+	
+	var nextLength = data[0];
+	data = data.slice(1);
+
+	for(var i=0; i<data.length; i++){
+	  var dataObj		= { length: nextLength };
+	  var value      	= data[i].substring(0,nextLength);
+	  nextLength 		= data[i].substring(nextLength, data[i].length);
+	  dataObj.value 	= value;
+
+	  data[i] = dataObj;
+	}
+
+    // Split separate fields
+    //data = data.split('§§').slice(1);
+	
+	var gridObj		= [];
+	var lineObj;
+
+    // Create table from grid data
+    var dataTab     = '<table class="gridDataTab" style>';
+    var colHeaders  = '<tr><th>LINE</th>';
+    var colGroup    = '<colgroup><col class="lineCol" />';
+    
+    if(columns){
+      for(i=0; i<columnCount; i++){
+		columnList.push({
+			caption:	$(columns[i]).find('Caption').html(), 
+			field: 		$(columns[i]).attr('Name'), 
+			type: 		$(columns[i]).attr('DataType'),
+			cellstyle:	{}
+		});
+		
+		$(columns[i]).find('CellStyle').find('Setter').each(function(index,setter){
+			columnList[i].cellstyle[$(setter).attr('Property')] = $(setter).attr('Value');
+		});
+		
+        colHeaders += '<th><div>'+
+        					( columnList[i].caption? columnList[i].caption+'('+columnList[i].field+')' : columnList[i].field )+
+        			  '</div><div class="gridMeta">'+
+							columnList[i].type+
+        			  '</div>';
+        
+        var styles = Object.keys(columnList[i].cellstyle);
+
+        if(styles && styles.length > 0){
+        	colHeaders += '<a class="cellstyleHeader">Style</a><div class="cellstyleTab"><table>';
+			
+			for(var j=0; j<styles.length; j++){
+				colHeaders += '<tr><td>'+styles[j]+'</td><td>'+columnList[i].cellstyle[styles[j]]+'</td></tr>';
+			}
+
+			colHeaders += '</table></div>';
+        }
+
+        			  '</th>';
+        colGroup   += '<col class="col'+i+'"/>';
+      }
+    
+      colGroup   += '</colgroup>';
+      colHeaders += '</tr>';
+
+      dataTab += colGroup + colHeaders;
+    }
+
+    // Run through fields, add new line each time the last column is reached
+    var lineCnt = 0;
+    for(i=0; i<data.length; i++){
+
+      if(i%columnCount === 0){
+        dataTab += '<tr><td>'+(lineCnt++)+'</td>';
+        lineObj		= {};
+      } 
+
+      dataTab += '<td><div'+ ((data[i].value === "")?' style="color:grey"' : '') +'>'+ ((data[i].value === "")? 'N/A' : data[i].value )+'</div><div class="gridMeta">'+data[i].length+'</div></td>';
+
+      if(columns){
+      	var column = columnList[i%columnCount];
+
+      	if(!column.caption || lineObj[column.caption])	{	lineObj[column.field] = data[i].value.trim();	}
+      	else											{	lineObj[column.caption] = data[i].value.trim();	}
+      }
+
+      if((i+1)%columnCount === 0){
+        dataTab += '</tr>';
+        gridObj.push(lineObj);
+      } 
+    }
+
+    return dataTab + '</table><textarea style="width:100%">'+JSON.stringify(gridObj, null, "\t")+'</textarea>';
+}
+
 function addContent(elem, parent, objTag, objIdAttr,typeAttr,childTag, childIdAttr, properties){
     
     // Loop over all the tags found for this object type
@@ -304,47 +465,9 @@ function addContent(elem, parent, objTag, objIdAttr,typeAttr,childTag, childIdAt
           // DataGrid Content
           if(childTag == "Data" && data.match(/[0-9]+#/g)){ // Should be a DataGrid
             
-      			var columns     = $obj.find('ColumnDefinitions').children();
-            var columnCount = columns.length;
+            var columns     = $obj.find('ColumnDefinitions').children();
             
-      			for(var i=30;i>=0;i--){
-      				data = data.replace(new RegExp(i+"#","g"),"§§#"+i+": ");
-      			}
-      			
-      			// Split separate fields
-      			data = data.split('§§').slice(1);
-            
-            // Create table from grid data
-      			var dataTab     = '<table class="gridDataTab" style>';
-      			var colHeaders  = '<tr><th>LINE</th>';
-      			var colGroup    = '<colgroup><col class="lineCol" />';
-      			
-      			for(i=0; i<columnCount; i++){
-      			  colHeaders += '<th>'+$(columns[i]).attr('Name')+'</th>';
-      			  colGroup   += '<col class="col'+i+'"/>';
-      			}
-      			
-      			colHeaders += '</tr>';
-      			colGroup   += '</colgroup>';
-      			
-      			dataTab += colGroup + colHeaders;
-      			
-      			// Run through fields, add new line each time the last column is reached
-      			var lineCnt = 0;
-      			for(i=0; i<data.length; i++){
-      			  
-      			  if(i%columnCount === 0){
-      			    dataTab += '<tr><td>'+(lineCnt++)+'</td>';
-      			  } 
-      			  
-      			  dataTab += '<td>'+data[i]+'</td>';
-      			  
-      			  if((i+1)%columnCount === 0){
-      			    dataTab += '</tr>';
-      			  } 
-      			}
-      			
-      			data = dataTab + '</table>';
+      		data = gridDataToTab(data, columns);
         			
           }else if($child.attr(childIdAttr) == "CustomAttributes"){
             customAttrs = {};
@@ -379,37 +502,52 @@ function buildTable(tab, obj, prevObj){
 // ===============================================================================
 function addObject(tab, key, obj, prevObj){
   
-	$('<tr><td><button>Send event</button></td></tr>').appendTo(tab).click(function(){
-	  console.log('Sending back item '+key);
-    chrome.extension.sendMessage({sendBack:true, id:key});
+	$('<button>Send event</button>').
+	appendTo(
+	   $('<td></td>').appendTo(
+	     $('<tr></tr>').appendTo(tab)
+	   ).append(
+        '<select id="'+key+'EventSelector">'+
+        '<option>MaskControlKeyEnterPressed</option>'+
+        '<option>MaskControlMouseLeftButtonDown</option>'+
+        '<option>MaskControlMouseRightButtonDown</option>'+
+        '<option>MaskControlMouseDoubleClick</option>'+
+        '<option>MaskControlMouseEnter</option>'+
+        '<option>MaskControlSelectionChanged</option>'+
+        '</select>'
+      )
+    ).click(function(){
+	    console.log('Sending back item '+key+', event '+ $('#'+key+'EventSelector option:selected' ).text() );
+        port.postMessage({sendBack:true, id:key, event: $('#'+key+'EventSelector option:selected' ).text() });
 	});
 	
 	var row = $('<tr></tr>').appendTo(tab);
 	var style;
+	
 	row.append('<td>'+key+'</td>');
-	  
-  var childTab = $('<table></table>').appendTo($('<td></td>').appendTo(row));
-  
-  var childCollections = Object.keys(obj);
-  
-  for(var i=0; i<childCollections.length; i++){
-    if(childCollections[i] == 'type') continue;
-    
-    addChildren(childTab, obj[childCollections[i]],   prevObj[childCollections[i]]    || {}, childCollections[i] );
-    //addChildren(childTab, obj.children,   prevObj.children    || {} );
-    //addChildren(childTab, obj.properties, prevObj.properties  || {} );
-    //addChildren(childTab, obj.languages,  prevObj.languages   || {} );
-  }
-  
-  if(currentStyleAttrs && currentStyleAttrs.length > 0){
-    var styleTab = $('<table></table>').appendTo($('<td></td>').appendTo(row));
-    
-  	for(var i=0;i<currentStyleAttrs.length;i++){
-  		if(isNaN(currentStyleAttrs[i]) && currentObjStyle[currentStyleAttrs[i]]){
-  			styleTab.append('<tr><td>'+currentStyleAttrs[i]+'</td><td>'+currentObjStyle[currentStyleAttrs[i]]+'</td></tr>');
-  		}
-  	}
-  }
+
+	var childTab = $('<table></table>').appendTo($('<td></td>').appendTo(row));
+
+	var childCollections = Object.keys(obj);
+	
+	for(var i=0; i<childCollections.length; i++){
+		if(childCollections[i] == 'type') continue;
+
+		addChildren(childTab, obj[childCollections[i]],   prevObj[childCollections[i]]    || {}, childCollections[i] );
+		//addChildren(childTab, obj.children,   prevObj.children    || {} );
+		//addChildren(childTab, obj.properties, prevObj.properties  || {} );
+		//addChildren(childTab, obj.languages,  prevObj.languages   || {} );
+	}
+
+	if(currentStyleAttrs && currentStyleAttrs.length > 0){
+		var styleTab = $('<table></table>').appendTo($('<td></td>').appendTo(row));
+
+		for(var i=0;i<currentStyleAttrs.length;i++){
+			if(isNaN(currentStyleAttrs[i]) && currentObjStyle[currentStyleAttrs[i]]){
+				styleTab.append('<tr><td>'+currentStyleAttrs[i]+'</td><td>'+currentObjStyle[currentStyleAttrs[i]]+'</td></tr>');
+			}
+		}
+	}
 }
 
 // ===============================================================================
@@ -451,7 +589,7 @@ function addChildren(tab,children, prevChildren, collectionName){
           }
         }else{
           custAttrRow.append('<td>-</td>');
-        }
+        }      	
       }else{
         var propertyChanged =  (!prevChildren[childName] || prevChildren[childName] != children[childName]);
         tab.append('<tr>'+ (

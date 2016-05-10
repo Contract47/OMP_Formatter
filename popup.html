@@ -1,0 +1,19 @@
+<!doctype html>
+<!--
+ This page is shown when the extension button is clicked, because the
+ "browser_action" field in manifest.json contains the "default_popup" key with
+ value "popup.html".
+ -->
+<html>
+  <head>
+    <title>Show Popup</title>
+    <script src="libs/jquery.min.js"></script>
+    <script src="popup.js"></script>
+  </head>
+  <body>
+    <div id="content" style="height:100%">
+      <h3 align="center" style="width:200px">Collect Views</h3>
+      <button id="collectButton">Go!</button>
+  </body>
+</html>
+

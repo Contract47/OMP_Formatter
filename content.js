@@ -1,3 +1,4 @@
+var port = chrome.extension.connect({ name: "content" });
 
 if(window.location.href.indexOf('webviewer') !== -1){
   
@@ -9,21 +10,7 @@ if(window.location.href.indexOf('webviewer') !== -1){
         obj = obj.parentNode;
       }
       
-      // Send messages to extension
-      chrome.extension.sendMessage({element:obj.outerHTML, id:obj.id});
+      // Send messages to extension scripts via background
+      port.postMessage({element:obj.outerHTML, id:obj.id});
   };
-  
-  //document.addEventListener("load", function(){
-    //console.log(handel_event);
-    /*var port = chrome.extension.connect({
-        name: "devtools"
-    });
-    
-    port.onMessage.addListener(function (msg) {
-      if(msg.sendBack){
-        console.log(msg.id);
-       // handel_event(msg.id, 'XY', 'responseObj' );
-      }
-    });*/
-  //});
 }

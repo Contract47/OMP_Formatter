@@ -17,13 +17,24 @@
   <h3 id="title">Received Responses / Displayed Objects</h3>
   
   <button id="viewToggleButton">Show Requests</button>
-  
-  <div  id="requestContent">
-    <table id="requests"></table>
-  </div>
-  <div  id="objectContent">
-    <button id="showAllButton" style="display:none">Show all</button>
-    <table id="objects"></table>
-  </div>
-
+  <div style="overflow: scroll; height: 95%;">
+	  <div  id="requestContent">
+		<div>
+			<button id="clearRequests">Clear</button>
+			<button id="newRequestButton">New Request</button>
+			<button id="fingertipButton">Send Fingertip</button>
+			<button id="showReqXMLButton">Show XML</button>
+		</div>
+		<textarea id="newRequestData" style="display:none;"></textarea><br/>
+		<button id="sendRequestButton" style="display:none;">Send</button>
+		<table id="requests"></table>
+		<div id="requestXML"></div>
+	  </div>
+	  <div  id="objectContent">
+		<button id="showAllButton" style="display:none">Show all</button>
+		<button id="showObjXMLButton">Show XML</button>
+		<table id="objects"></table>
+		<div id="objectXML"></div>
+	  </div>
+	</div>
 </body>
